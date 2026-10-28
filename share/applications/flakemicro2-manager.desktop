@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=flakemicro2 VM Manager
+Comment=Start, stop, and create microVMs
+Exec=python3 %h/flakemicro2/scripts/gui-launcher.py
+Icon=utilities-terminal
+Terminal=false
+Type=Application
+Categories=System;Virtualization;
