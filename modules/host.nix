@@ -77,6 +77,7 @@
       config = {
         imports = [ templates.minimal ];
         networking.hostName = "sys-net";
+        nixpkgs.config.allowUnfree = true;
         microvm.interfaces = [{
           type = "user"; # change to tap after host bridge setup
           id = "net";
@@ -89,6 +90,7 @@
       config = {
         imports = [ templates.workstation ];
         networking.hostName = "personal";
+        nixpkgs.config.allowUnfree = true;
         microvm.interfaces = [{
           type = "user";
           id = "personal";
@@ -102,6 +104,7 @@
       config = {
         imports = [ templates.workstation ];
         networking.hostName = "work";
+        nixpkgs.config.allowUnfree = true;
         microvm.interfaces = [{
           type = "user";
           id = "work";
