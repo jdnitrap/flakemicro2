@@ -4,6 +4,7 @@ let
     imports = [ microvm.nixosModules.microvm ];
     users.users.root.password = "";
     system.stateVersion = "26.05";
+    nixpkgs.config.allowUnfree = true;
     microvm = {
       hypervisor = "qemu";
       mem = 512;
@@ -27,7 +28,8 @@ let
 
   workstation = { lib, pkgs, ... }: {
     imports = [ minimal ];
-    microvm.mem = lib.mkForce 2048;
+    # Avoid exact 2048 MB (QEMU hang issue)
+    microvm.mem = lib.mkForce 1536;
     microvm.vcpu = lib.mkForce 2;
     environment.systemPackages = with pkgs; [ firefox git vim htop ];
   };
