@@ -78,6 +78,7 @@
                 salt
                 firefox
                 git
+                gh
                 vim
                 python3
                 python3Packages.tkinter
