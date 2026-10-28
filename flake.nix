@@ -58,8 +58,8 @@
           inherit system;
           modules = [
             microvm.nixosModules.host
-            # hardware-configuration.nix comes from your machine when you deploy:
-            # ./hardware-configuration.nix
+            # Use whatever hardware-configuration.nix is already on the machine
+            /etc/nixos/hardware-configuration.nix
             {
               # Boot
               boot.loader.systemd-boot.enable = true;
