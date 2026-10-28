@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 flakemicro2 day-to-day GUI VM Manager
+Works without a local clone (uses remote flake for temporary VMs).
 """
 import subprocess
 import tkinter as tk
@@ -8,6 +9,7 @@ from tkinter import messagebox, simpledialog
 from pathlib import Path
 
 DECLARED = ["sys-net", "personal", "work"]
+FLAKE = "github:jdnitrap/flakemicro2"
 STATE_DIR = Path.home() / ".flakemicro2"
 STATE_DIR.mkdir(exist_ok=True)
 
@@ -35,9 +37,9 @@ def launch_temp():
     label = simpledialog.askstring("Temporary VM", "Session label:", initialvalue="session")
     if not label:
         return
-    # One-off runner (overlay is per-run; discard by not keeping the image)
     messagebox.showinfo("Temporary", f"Launching disposable session '{label}'\nClose the VM window to discard.")
-    run(["nix", "run", ".#personal"])
+    # Use the remote flake so no local clone is required
+    run(["nix", "run", f"{FLAKE}#personal"])
 
 def create_labeled():
     name = simpledialog.askstring("Create persistent VM", "Name:")
@@ -50,7 +52,7 @@ def create_labeled():
     stub.write_text(f'''# Generated labeled VM: {name}
 # label: {label}
 # template: {template}
-# Paste into microvm.vms in flake.nix then rebuild
+# Paste into microvm.vms in modules/host.nix then rebuild
 {name} = {{
   autostart = false;
   config = {{
@@ -60,7 +62,7 @@ def create_labeled():
   }};
 }};
 ''')
-    messagebox.showinfo("Created", f"Stub written to:\n{stub}\n\nCopy the block into flake.nix and rebuild to activate.")
+    messagebox.showinfo("Created", f"Stub written to:\n{stub}\n\nCopy the block into modules/host.nix and rebuild to activate.")
 
 root = tk.Tk()
 root.title("flakemicro2 VM Manager")
@@ -81,5 +83,5 @@ tk.Button(root, text="Launch temporary session", command=launch_temp).pack()
 tk.Label(root, text="Create persistent labeled VM", font=("", 11, "bold")).pack(pady=(12, 4))
 tk.Button(root, text="Create labeled VM", command=create_labeled).pack()
 
-tk.Label(root, text="Stubs → ~/.flakemicro2/   |   See docs/deploy.md", fg="gray").pack(pady=8)
+tk.Label(root, text="Stubs → ~/.flakemicro2/   |   Temporary uses remote flake", fg="gray").pack(pady=8)
 root.mainloop()
