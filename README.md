@@ -31,7 +31,7 @@ It is **not** a Xen-level security product. Isolation is KVM + microvm.nix on a 
 - `hardware-configuration.nix` — from the basic repo (ZenBook)
 - `scripts/gui-launcher.py` — day-to-day manager
 - `salt/` — orchestration states
-- `docs/deploy.md`, `docs/networking.md`
+- `docs/deploy.md`, `docs/networking.md`, `docs/harden.md`
 
 ## Deploy
 
@@ -45,5 +45,6 @@ After switch, log in as `admin` / `changeme` and run the manager.
 - GUI: start/stop purpose VMs, launch temporary sessions, create labeled VMs.
 - Labeled VM stubs land in `~/.flakemicro2/` — paste into the flake and rebuild.
 - Networking isolation steps: `docs/networking.md`.
+- TCB minimization / hardening: `docs/harden.md`.
 
 Handbook: https://microvm-nix.github.io/microvm.nix/
