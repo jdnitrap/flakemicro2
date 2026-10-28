@@ -73,8 +73,14 @@
               time.timeZone = "America/New_York";
               i18n.defaultLocale = "en_US.UTF-8";
 
-              # Nix
-              nix.settings.experimental-features = [ "nix-command" "flakes" ];
+              # Nix experimental features
+              nix.settings.experimental-features = [
+                "nix-command"
+                "flakes"
+                "ca-derivations"
+                "recursive-nix"
+                "impure-derivations"
+              ];
               nixpkgs.config.allowUnfree = true;
 
               # Users
