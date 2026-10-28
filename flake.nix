@@ -75,13 +75,27 @@
               services.xserver.displayManager.lightdm.enable = true;
 
               environment.systemPackages = with pkgs; [
+                # Core management
                 salt
-                firefox
                 git
                 gh
                 vim
+
+                # GUI manager
                 python3
                 python3Packages.tkinter
+
+                # MicroVM / hypervisor support
+                qemu
+                iproute2
+                bridge-utils
+
+                # General support
+                firefox
+                openssh
+                htop
+                wget
+                curl
               ];
 
               # Day-to-day VMs
