@@ -1,5 +1,5 @@
 base:
-  'flakemicro-host':
+  'nixqubes':
     - host
   'sys-net':
     - sys-net
