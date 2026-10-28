@@ -1,4 +1,10 @@
 { pkgs, templates, ... }:
+let
+  nixqubes-manager = pkgs.writeScriptBin "nixqubes-manager" ''
+    #!${pkgs.python3}/bin/python3
+    ${builtins.readFile ../scripts/gui-launcher.py}
+  '';
+in
 {
   # Boot
   boot.loader.systemd-boot.enable = true;
@@ -54,6 +60,7 @@
     # GUI manager
     python3
     tk
+    nixqubes-manager
 
     # MicroVM / hypervisor support
     qemu
@@ -67,6 +74,18 @@
     wget
     curl
   ];
+
+  # Desktop entry so it appears in the XFCE menu
+  environment.etc."xdg/applications/nixqubes-manager.desktop".text = ''
+    [Desktop Entry]
+    Name=nixqubes VM Manager
+    Comment=Start, stop, and create microVMs
+    Exec=nixqubes-manager
+    Icon=utilities-system-monitor
+    Terminal=false
+    Type=Application
+    Categories=System;Virtualization;
+  '';
 
   # Day-to-day VMs
   # Networking note: switch type = "user" to type = "tap" + host bridge
