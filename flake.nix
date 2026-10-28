@@ -19,38 +19,47 @@
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
 
-      # Shared base for template-style VMs
-      templateBase = { lib, pkgs, ... }: {
-        imports = [ microvm.nixosModules.microvm ];
-        users.users.root.password = "";
-        system.stateVersion = "26.05";
-        microvm = {
-          hypervisor = "qemu";
-          mem = 1024;
-          vcpu = 2;
-          shares = [{
-            proto = "9p";
-            tag = "ro-store";
-            source = "/nix/store";
-            mountPoint = "/nix/.ro-store";
-          }];
-          writableStoreOverlay = "/nix/.rw-store";
-          volumes = [{
-            image = "overlay.img";
-            mountPoint = "/nix/.rw-store";
-            size = 2048;
-          }];
-          socket = "control.socket";
+      # Explicit templates
+      templates = {
+        minimal = { lib, pkgs, ... }: {
+          imports = [ microvm.nixosModules.microvm ];
+          users.users.root.password = "";
+          system.stateVersion = "26.05";
+          microvm = {
+            hypervisor = "qemu";
+            mem = 512;
+            vcpu = 1;
+            shares = [{
+              proto = "9p";
+              tag = "ro-store";
+              source = "/nix/store";
+              mountPoint = "/nix/.ro-store";
+            }];
+            writableStoreOverlay = "/nix/.rw-store";
+            volumes = [{
+              image = "overlay.img";
+              mountPoint = "/nix/.rw-store";
+              size = 1024;
+            }];
+            socket = "control.socket";
+          };
+          environment.systemPackages = with pkgs; [ vim ];
         };
-        environment.systemPackages = with pkgs; [ vim htop ];
+        workstation = { lib, pkgs, ... }: {
+          imports = [ templates.minimal ];
+          microvm.mem = 2048;
+          microvm.vcpu = 2;
+          environment.systemPackages = with pkgs; [ firefox git vim htop ];
+        };
       };
     in {
       nixosConfigurations = {
-        # Dom0-like host
         host = nixpkgs.lib.nixosSystem {
           inherit system;
           modules = [
             microvm.nixosModules.host
+            # Uncomment and add your hardware-configuration.nix here for real deploy:
+            # ./hardware-configuration.nix
             {
               networking.hostName = "flakemicro-host";
               users.mutableUsers = true;
@@ -70,17 +79,21 @@
                 firefox
                 git
                 vim
+                python3
+                python3Packages.tkinter
               ];
 
-              # Declare the microVMs the host can run
+              # Day-to-day VMs
+              # Networking note: switch type = "user" to type = "tap" + host bridge
+              # once sys-net owns the real NIC (see docs/networking.md).
               microvm.vms = {
                 sys-net = {
                   autostart = false;
                   config = {
-                    imports = [ templateBase ];
+                    imports = [ templates.minimal ];
                     networking.hostName = "sys-net";
                     microvm.interfaces = [{
-                      type = "user";
+                      type = "user"; # change to tap after host bridge setup
                       id = "net";
                       mac = "02:00:00:00:00:10";
                     }];
@@ -89,7 +102,7 @@
                 personal = {
                   autostart = false;
                   config = {
-                    imports = [ templateBase ];
+                    imports = [ templates.workstation ];
                     networking.hostName = "personal";
                     microvm.interfaces = [{
                       type = "user";
@@ -102,7 +115,7 @@
                 work = {
                   autostart = false;
                   config = {
-                    imports = [ templateBase ];
+                    imports = [ templates.workstation ];
                     networking.hostName = "work";
                     microvm.interfaces = [{
                       type = "user";
@@ -119,22 +132,11 @@
           ];
         };
 
-        # Standalone runners for testing
-        sys-net = nixpkgs.lib.nixosSystem {
-          inherit system;
-          modules = [
-            templateBase
-            { networking.hostName = "sys-net"; }
-          ];
-        };
         personal = nixpkgs.lib.nixosSystem {
           inherit system;
           modules = [
-            templateBase
-            {
-              networking.hostName = "personal";
-              environment.systemPackages = with pkgs; [ firefox ];
-            }
+            templates.workstation
+            { networking.hostName = "personal"; }
           ];
         };
       };
@@ -142,7 +144,6 @@
       packages.${system} = {
         default = self.nixosConfigurations.personal.config.microvm.declaredRunner;
         personal = self.nixosConfigurations.personal.config.microvm.declaredRunner;
-        sys-net = self.nixosConfigurations.sys-net.config.microvm.declaredRunner;
       };
     };
 }
