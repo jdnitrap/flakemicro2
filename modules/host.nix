@@ -1,9 +1,27 @@
 { pkgs, templates, ... }:
 let
-  nixqubes-manager = pkgs.writeScriptBin "nixqubes-manager" ''
-    #!${pkgs.python3}/bin/python3
-    ${builtins.readFile ../scripts/gui-launcher.py}
-  '';
+  nixqubes-manager = pkgs.stdenv.mkDerivation {
+    name = "nixqubes-manager";
+    src = ../scripts;
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    installPhase = ''
+      mkdir -p $out/bin $out/share/applications
+      cp gui-launcher.py $out/bin/nixqubes-manager
+      chmod +x $out/bin/nixqubes-manager
+      # Ensure shebang works
+      sed -i '1s|.*|#!${pkgs.python3}/bin/python3|' $out/bin/nixqubes-manager
+      cat > $out/share/applications/nixqubes-manager.desktop << EOF
+      [Desktop Entry]
+      Name=nixqubes VM Manager
+      Comment=Start, stop, and create microVMs
+      Exec=nixqubes-manager
+      Icon=utilities-system-monitor
+      Terminal=false
+      Type=Application
+      Categories=System;Virtualization;
+      EOF
+    '';
+  };
 in
 {
   # Boot
@@ -57,7 +75,7 @@ in
     gh
     vim
 
-    # GUI manager
+    # GUI manager (includes .desktop file)
     python3
     tk
     nixqubes-manager
@@ -74,18 +92,6 @@ in
     wget
     curl
   ];
-
-  # Desktop entry so it appears in the XFCE menu
-  environment.etc."xdg/applications/nixqubes-manager.desktop".text = ''
-    [Desktop Entry]
-    Name=nixqubes VM Manager
-    Comment=Start, stop, and create microVMs
-    Exec=nixqubes-manager
-    Icon=utilities-system-monitor
-    Terminal=false
-    Type=Application
-    Categories=System;Virtualization;
-  '';
 
   # Day-to-day VMs
   # Networking note: switch type = "user" to type = "tap" + host bridge
