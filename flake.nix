@@ -58,10 +58,10 @@
           inherit system;
           modules = [
             microvm.nixosModules.host
-            # Uncomment and add your hardware-configuration.nix here for real deploy:
+            # hardware-configuration.nix comes from your machine when you deploy:
             # ./hardware-configuration.nix
             {
-              networking.hostName = "flakemicro-host";
+              networking.hostName = "nixqubes";
               users.mutableUsers = true;
               users.users.admin = {
                 isNormalUser = true;
