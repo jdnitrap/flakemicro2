@@ -10,31 +10,27 @@ Day-to-day Qubes-inspired NixOS MicroVM system using microvm.nix.
 - Salt state skeletons
 - Deploy and networking guides
 
+## Structure
+- `flake.nix` — thin entry point
+- `modules/host.nix` — host configuration
+- `modules/templates.nix` — microVM templates
+- `scripts/gui-launcher.py` — day-to-day manager
+- `salt/` — orchestration states
+- `docs/deploy.md`, `docs/networking.md`
+
 ## Deploy (no clone)
 
 ```bash
-# Place your hardware-configuration.nix next to where you will reference the flake,
-# or copy it into a local checkout if you prefer. Then:
 sudo nixos-rebuild switch --flake github:jdnitrap/flakemicro2#host
 ```
 
-Uncomment the `./hardware-configuration.nix` line in the host modules first if you are using a local copy of the flake.
+The flake imports `/etc/nixos/hardware-configuration.nix` from the machine.
 
-After switch, log in as `admin` / `changeme` and run the manager (from a checkout or after copying the script):
-
-```bash
-python3 scripts/gui-launcher.py
-```
+After switch, log in as `admin` / `changeme` and run the manager.
 
 ## Daily use
 - GUI: start/stop purpose VMs, launch temporary sessions, create labeled VMs.
 - Labeled VM stubs land in `~/.flakemicro2/` — paste into the flake and rebuild.
 - Networking isolation steps: `docs/networking.md`.
-
-## Files
-- `flake.nix` — host, templates, VMs
-- `scripts/gui-launcher.py` — day-to-day manager
-- `salt/` — orchestration states
-- `docs/deploy.md`, `docs/networking.md`
 
 Handbook: https://microvm-nix.github.io/microvm.nix/
