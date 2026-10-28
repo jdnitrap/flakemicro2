@@ -81,9 +81,9 @@
                 gh
                 vim
 
-                # GUI manager
+                # GUI manager (tkinter is provided by python3 + tk)
                 python3
-                python3Packages.tkinter
+                tk
 
                 # MicroVM / hypervisor support
                 qemu
