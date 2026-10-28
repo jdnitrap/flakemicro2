@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 """
-flakemicro2 Qubes-style VM Manager
-- List of VMs with label, state, template
-- Start / Stop / Status
-- Launch disposable
-- Create labeled persistent VM (writes stub)
+nixqubes VM Manager — Qubes-style list
+Always shows declared VMs even if systemctl units are not yet installed.
 """
 import subprocess
 import tkinter as tk
@@ -17,30 +14,32 @@ STATE_DIR.mkdir(exist_ok=True)
 
 # name, label, color, template
 VMS = [
-    ("sys-net", "net", "#00aa00", "minimal"),
-    ("personal", "personal", "#ff8800", "workstation"),
-    ("work", "work", "#0088ff", "workstation"),
+    ("sys-net", "net", "#2e7d32", "minimal"),
+    ("personal", "personal", "#ef6c00", "workstation"),
+    ("work", "work", "#1565c0", "workstation"),
 ]
 
-def run(cmd):
+def run_quiet(cmd):
     try:
-        r = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        r = subprocess.run(cmd, check=False, capture_output=True, text=True, timeout=5)
         return r.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        messagebox.showerror("Error", (e.stderr or str(e))[:400])
-        return None
+    except Exception:
+        return ""
 
 def vm_state(name):
-    out = run(["systemctl", "is-active", f"microvm@{name}"])
-    return out if out else "unknown"
+    out = run_quiet(["systemctl", "is-active", f"microvm@{name}"])
+    if out in ("active", "inactive", "failed", "activating"):
+        return out
+    return "not-installed"
 
 def refresh_list():
-    for item in tree.get_children():
-        tree.delete(item)
+    tree.delete(*tree.get_children())
     for name, label, color, tmpl in VMS:
         state = vm_state(name)
-        tree.insert("", "end", iid=name, values=(name, label, state, tmpl), tags=(label,))
-        tree.tag_configure(label, background=color)
+        tree.insert("", "end", iid=name, values=(name, label, state, tmpl))
+        # color the row via tag
+        tree.tag_configure(name, background=color, foreground="white")
+        tree.item(name, tags=(name,))
 
 def selected_name():
     sel = tree.selection()
@@ -49,28 +48,29 @@ def selected_name():
 def start_selected():
     name = selected_name()
     if not name:
+        messagebox.showinfo("Select", "Select a VM first")
         return
-    if run(["systemctl", "start", f"microvm@{name}"]):
-        refresh_list()
+    run_quiet(["systemctl", "start", f"microvm@{name}"])
+    refresh_list()
 
 def stop_selected():
     name = selected_name()
     if not name:
         return
-    if run(["systemctl", "stop", f"microvm@{name}"]):
-        refresh_list()
+    run_quiet(["systemctl", "stop", f"microvm@{name}"])
+    refresh_list()
 
 def launch_disposable():
-    label = simpledialog.askstring("Disposable", "Session label:", initialvalue="disp")
+    label = simpledialog.askstring("Disposable VM", "Session label:", initialvalue="disp")
     if not label:
         return
-    messagebox.showinfo("Disposable", f"Launching disposable '{label}'\nClose the window to discard.")
-    run(["nix", "run", f"{FLAKE}#personal"])
+    messagebox.showinfo("Disposable", f"Starting disposable '{label}'\n(close the VM window to discard)")
+    subprocess.Popen(["nix", "run", f"{FLAKE}#personal"])
 
 def create_vm():
     name = simpledialog.askstring("Create VM", "Name:")
-    if not name or not name.isalnum():
-        messagebox.showerror("Invalid", "Alphanumeric name required")
+    if not name or not name.replace("-", "").isalnum():
+        messagebox.showerror("Invalid", "Use letters, numbers, or hyphen")
         return
     label = simpledialog.askstring("Label", "Label:", initialvalue="custom") or "custom"
     tmpl = simpledialog.askstring("Template", "minimal or workstation:", initialvalue="workstation") or "workstation"
@@ -85,30 +85,43 @@ def create_vm():
   }};
 }};
 """)
-    messagebox.showinfo("Created", f"Stub written to {stub}\nAdd it to modules/host.nix and rebuild.")
+    messagebox.showinfo("Created", f"Stub saved to:\n{stub}\n\nAdd the block to modules/host.nix and rebuild.")
 
 root = tk.Tk()
-root.title("nixqubes VM Manager")
-root.geometry("640x420")
+root.title("nixqubes — VM Manager")
+root.geometry("720x480")
+root.configure(bg="#1e1e1e")
 
-tk.Label(root, text="nixqubes", font=("", 14, "bold")).pack(pady=4)
+tk.Label(root, text="nixqubes", font=("Sans", 16, "bold"), bg="#1e1e1e", fg="white").pack(pady=6)
+
+style = ttk.Style()
+style.theme_use("clam")
+style.configure("Treeview", background="#2d2d2d", fieldbackground="#2d2d2d", foreground="white", rowheight=28)
+style.configure("Treeview.Heading", background="#3c3c3c", foreground="white")
 
 cols = ("Name", "Label", "State", "Template")
-tree = ttk.Treeview(root, columns=cols, show="headings", height=10)
-for c in cols:
+tree = ttk.Treeview(root, columns=cols, show="headings", height=12)
+for c, w in zip(cols, (160, 120, 140, 140)):
     tree.heading(c, text=c)
-    tree.column(c, width=140)
-tree.pack(fill="both", expand=True, padx=8, pady=4)
+    tree.column(c, width=w, anchor="w")
+tree.pack(fill="both", expand=True, padx=10, pady=6)
 
-btn = tk.Frame(root)
-btn.pack(pady=6)
-tk.Button(btn, text="Start", width=10, command=start_selected).pack(side="left", padx=3)
-tk.Button(btn, text="Stop", width=10, command=stop_selected).pack(side="left", padx=3)
-tk.Button(btn, text="Refresh", width=10, command=refresh_list).pack(side="left", padx=3)
-tk.Button(btn, text="Disposable", width=10, command=launch_disposable).pack(side="left", padx=3)
-tk.Button(btn, text="Create VM", width=10, command=create_vm).pack(side="left", padx=3)
+btn = tk.Frame(root, bg="#1e1e1e")
+btn.pack(pady=8)
+for text, cmd in [
+    ("Start", start_selected),
+    ("Stop", stop_selected),
+    ("Refresh", refresh_list),
+    ("Disposable", launch_disposable),
+    ("Create VM", create_vm),
+]:
+    tk.Button(btn, text=text, width=12, command=cmd, bg="#424242", fg="white", relief="flat").pack(side="left", padx=4)
 
-tk.Label(root, text="Select a VM then Start/Stop  |  Disposable uses remote flake  |  Create writes stub to ~/.flakemicro2/", fg="gray").pack(pady=4)
+tk.Label(
+    root,
+    text="VMs are always listed. State shows 'not-installed' until the host has the microvm units.\nDisposable launches a temporary session. Create VM writes a stub for the flake.",
+    bg="#1e1e1e", fg="#aaaaaa", justify="left"
+).pack(pady=4)
 
 refresh_list()
 root.mainloop()
