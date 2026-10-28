@@ -61,18 +61,43 @@
             # hardware-configuration.nix comes from your machine when you deploy:
             # ./hardware-configuration.nix
             {
+              # Boot
+              boot.loader.systemd-boot.enable = true;
+              boot.loader.efi.canTouchEfiVariables = true;
+
+              # Networking
               networking.hostName = "nixqubes";
+              networking.networkmanager.enable = true;
+
+              # Locale / time (adjust if needed)
+              time.timeZone = "America/New_York";
+              i18n.defaultLocale = "en_US.UTF-8";
+
+              # Nix
+              nix.settings.experimental-features = [ "nix-command" "flakes" ];
+              nixpkgs.config.allowUnfree = true;
+
+              # Users
               users.mutableUsers = true;
               users.users.admin = {
                 isNormalUser = true;
-                extraGroups = [ "wheel" "networkmanager" ];
+                extraGroups = [ "wheel" "networkmanager" "kvm" ];
                 initialPassword = "changeme";
               };
               security.sudo.wheelNeedsPassword = false;
 
+              # Desktop
               services.xserver.enable = true;
               services.xserver.desktopManager.xfce.enable = true;
               services.xserver.displayManager.lightdm.enable = true;
+              services.pipewire = {
+                enable = true;
+                alsa.enable = true;
+                pulse.enable = true;
+              };
+
+              # SSH (optional but useful)
+              services.openssh.enable = true;
 
               environment.systemPackages = with pkgs; [
                 # Core management
@@ -81,7 +106,7 @@
                 gh
                 vim
 
-                # GUI manager (tkinter is provided by python3 + tk)
+                # GUI manager
                 python3
                 tk
 
