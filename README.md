@@ -3,21 +3,26 @@
 Day-to-day Qubes-inspired NixOS MicroVM system using microvm.nix.
 
 ## What you get
-- XFCE host with admin user (`admin` / `changeme`, mutable users)
+- XFCE host named `nixqubes` with admin user (`admin` / `changeme`, mutable users)
 - Explicit templates: `minimal`, `workstation`
 - Purpose VMs: `sys-net`, `personal`, `work`
 - GUI manager for start/stop/status, temporary sessions, and labeled VM creation
 - Salt state skeletons
 - Deploy and networking guides
 
-## Deploy
-See `docs/deploy.md`.
+## Deploy (no clone)
 
 ```bash
-git clone https://github.com/jdnitrap/flakemicro2.git
-cd flakemicro2
-# add hardware-configuration.nix, uncomment import, then:
-sudo nixos-rebuild switch --flake .#host
+# Place your hardware-configuration.nix next to where you will reference the flake,
+# or copy it into a local checkout if you prefer. Then:
+sudo nixos-rebuild switch --flake github:jdnitrap/flakemicro2#host
+```
+
+Uncomment the `./hardware-configuration.nix` line in the host modules first if you are using a local copy of the flake.
+
+After switch, log in as `admin` / `changeme` and run the manager (from a checkout or after copying the script):
+
+```bash
 python3 scripts/gui-launcher.py
 ```
 
