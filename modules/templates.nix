@@ -27,8 +27,8 @@ let
 
   workstation = { lib, pkgs, ... }: {
     imports = [ minimal ];
-    microvm.mem = 2048;
-    microvm.vcpu = 2;
+    microvm.mem = lib.mkForce 2048;
+    microvm.vcpu = lib.mkForce 2;
     environment.systemPackages = with pkgs; [ firefox git vim htop ];
   };
 in
