@@ -27,8 +27,8 @@
           inherit system;
           modules = [
             microvm.nixosModules.host
-            # Use whatever hardware-configuration.nix is already on the machine
-            /etc/nixos/hardware-configuration.nix
+            # Hardware config: add your own import here if needed
+            # (e.g. a path you control, or leave unset and rely on existing system)
             (import ./modules/host.nix { inherit pkgs templates; })
           ];
         };
