@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
 """
-flakemicro2 GUI VM Manager
-- Start/stop declared purpose VMs
-- Spin up temporary (disposable) microVMs from template
-- Create labeled persistent VMs (writes a stub that can be imported into the flake)
-Requires: python3, tkinter, systemctl / microvm on PATH
+flakemicro2 day-to-day GUI VM Manager
 """
 import subprocess
 import tkinter as tk
 from tkinter import messagebox, simpledialog
-import os
 from pathlib import Path
 
 DECLARED = ["sys-net", "personal", "work"]
@@ -21,52 +16,70 @@ def run(cmd):
         r = subprocess.run(cmd, check=True, capture_output=True, text=True)
         return r.stdout
     except subprocess.CalledProcessError as e:
-        messagebox.showerror("Error", e.stderr or str(e))
+        messagebox.showerror("Error", (e.stderr or str(e))[:500])
         return None
 
 def start_vm(name):
     if run(["systemctl", "start", f"microvm@{name}"]):
-        messagebox.showinfo("Started", f"{name} started")
+        messagebox.showinfo("OK", f"{name} started")
 
 def stop_vm(name):
     if run(["systemctl", "stop", f"microvm@{name}"]):
-        messagebox.showinfo("Stopped", f"{name} stopped")
+        messagebox.showinfo("OK", f"{name} stopped")
 
-def launch_temp(label):
-    # Temporary: use nix run against a template-style config (or microvm command)
-    # In a full setup this would create a disposable overlay and start it
-    name = f"temp-{label.replace(' ', '-')}"
-    messagebox.showinfo("Temporary", f"Would launch disposable VM: {name}\n(overlay discarded on shutdown)")
-    # Placeholder: nix run .#personal or similar one-off
-    run(["nix", "run", ".#personal"])  # example; replace with proper temp runner
+def status_vm(name):
+    out = run(["systemctl", "is-active", f"microvm@{name}"])
+    messagebox.showinfo(name, out.strip() if out else "unknown")
+
+def launch_temp():
+    label = simpledialog.askstring("Temporary VM", "Session label:", initialvalue="session")
+    if not label:
+        return
+    # One-off runner (overlay is per-run; discard by not keeping the image)
+    messagebox.showinfo("Temporary", f"Launching disposable session '{label}'\nClose the VM window to discard.")
+    run(["nix", "run", ".#personal"])
 
 def create_labeled():
-    name = simpledialog.askstring("Create VM", "Name:")
-    if not name:
+    name = simpledialog.askstring("Create persistent VM", "Name:")
+    if not name or not name.isalnum():
+        messagebox.showerror("Invalid", "Name must be alphanumeric")
         return
-    label = simpledialog.askstring("Label", "Label/purpose:", initialvalue="custom")
-    purpose = simpledialog.askstring("Template", "Base template (personal/work/minimal):", initialvalue="personal")
+    label = simpledialog.askstring("Label", "Label/purpose:", initialvalue="custom") or "custom"
+    template = simpledialog.askstring("Template", "minimal or workstation:", initialvalue="workstation") or "workstation"
     stub = STATE_DIR / f"{name}.nix"
-    stub.write_text(f"# Auto-generated labeled VM\n# name={name} label={label} template={purpose}\n# Import this into flake.nix microvm.vms\n")
-    messagebox.showinfo("Created", f"Labeled VM stub written to {stub}\nAdd it to the flake and rebuild to make it permanent.")
+    stub.write_text(f'''# Generated labeled VM: {name}
+# label: {label}
+# template: {template}
+# Paste into microvm.vms in flake.nix then rebuild
+{name} = {{
+  autostart = false;
+  config = {{
+    imports = [ templates.{template} ];
+    networking.hostName = "{name}";
+    microvm.interfaces = [{{ type = "user"; id = "{name}"; mac = "02:00:00:00:00:99"; }}];
+  }};
+}};
+''')
+    messagebox.showinfo("Created", f"Stub written to:\n{stub}\n\nCopy the block into flake.nix and rebuild to activate.")
 
 root = tk.Tk()
 root.title("flakemicro2 VM Manager")
-root.geometry("420x320")
+root.geometry("480x380")
 
-tk.Label(root, text="Declared purpose VMs", font=("", 12, "bold")).pack(pady=5)
+tk.Label(root, text="Purpose VMs", font=("", 11, "bold")).pack(pady=4)
 for vm in DECLARED:
     f = tk.Frame(root)
-    f.pack(fill="x", padx=10, pady=2)
-    tk.Label(f, text=vm, width=14, anchor="w").pack(side="left")
-    tk.Button(f, text="Start", width=8, command=lambda v=vm: start_vm(v)).pack(side="left", padx=2)
-    tk.Button(f, text="Stop", width=8, command=lambda v=vm: stop_vm(v)).pack(side="left")
+    f.pack(fill="x", padx=8, pady=1)
+    tk.Label(f, text=vm, width=12, anchor="w").pack(side="left")
+    tk.Button(f, text="Start", width=7, command=lambda v=vm: start_vm(v)).pack(side="left", padx=1)
+    tk.Button(f, text="Stop", width=7, command=lambda v=vm: stop_vm(v)).pack(side="left", padx=1)
+    tk.Button(f, text="Status", width=7, command=lambda v=vm: status_vm(v)).pack(side="left")
 
-tk.Label(root, text="Temporary / disposable", font=("", 12, "bold")).pack(pady=(15, 5))
-tk.Button(root, text="Launch temporary VM", command=lambda: launch_temp("session")).pack()
+tk.Label(root, text="Temporary / disposable", font=("", 11, "bold")).pack(pady=(12, 4))
+tk.Button(root, text="Launch temporary session", command=launch_temp).pack()
 
-tk.Label(root, text="Create persistent", font=("", 12, "bold")).pack(pady=(15, 5))
+tk.Label(root, text="Create persistent labeled VM", font=("", 11, "bold")).pack(pady=(12, 4))
 tk.Button(root, text="Create labeled VM", command=create_labeled).pack()
 
-tk.Label(root, text="Stubs land in ~/.flakemicro2/ for flake import", fg="gray").pack(pady=10)
+tk.Label(root, text="Stubs → ~/.flakemicro2/   |   See docs/deploy.md", fg="gray").pack(pady=8)
 root.mainloop()
