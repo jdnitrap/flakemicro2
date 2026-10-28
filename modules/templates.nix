@@ -4,7 +4,6 @@ let
     imports = [ microvm.nixosModules.microvm ];
     users.users.root.password = "";
     system.stateVersion = "26.05";
-    nixpkgs.config.allowUnfree = true;
     microvm = {
       hypervisor = "qemu";
       mem = 512;
